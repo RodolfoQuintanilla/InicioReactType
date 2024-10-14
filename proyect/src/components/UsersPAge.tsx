@@ -1,11 +1,15 @@
 import axios from "axios"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { ReqResUserListResponse } from "../interfaces"
 
 
-const loadUsers = async (): Promise<User[]> => {
+const loadUsers = async (page = 1): Promise<User[]> => {
     try {
-        const { data } = await axios.get<ReqResUserListResponse>('https://reqres.in/api/users');
+        const { data } = await axios.get<ReqResUserListResponse>('https://reqres.in/api/users', {
+            params: {
+                page: page
+            }
+        });
         return data.data;
     }
     catch (error) {
@@ -16,55 +20,78 @@ const loadUsers = async (): Promise<User[]> => {
 }
 
 const UsersPAge = () => {
-
+    const currentPageRef = useRef(1);
     useEffect(() => {
 
-        loadUsers().then(users => setUsuarios(users))
+        loadUsers(currentPageRef).then(users => setUsuarios(users))
 
     }, [])
 
     const [usuarios, setUsuarios] = useState<User[]>([]);
 
-    return (
-        <>
-            <h3>Usuarios:</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Avatar</th>
-                        <th>Nombre</th>
-                        <th>Correo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {usuarios.map(user => (
-                        <UserRow key={user.id} user={user} />
-                    ))}
+    const nextPage = async () => {
+        currentPageRef.current++;
+        const users = await loadUsers(currentPageRef.current);
+        if (users.length > 0) {
+            setUsuarios(users);
+        } else {
+            currentPageRef.current--;
+        }
 
-                </tbody>
-            </table>
-        </>
-    )
-}
-
-export default UsersPAge
+        const prevpage = async () => {
+            if (currentPageRef.current < 1) return;
 
 
+            currentPageRef.current--;
+            const users = await loadUsers(currentPageRef.current)
+            setUsuarios(users);
+        }
 
-interface Props {
-    user: User;
-}
+
+        return (
+            <>
+                <h3>Usuarios:</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Avatar</th>
+                            <th>Nombre</th>
+                            <th>Correo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {usuarios.map(user => (
+                            <UserRow key={user.id} user={user} />
+                        ))}
+
+                    </tbody>
+                </table>
+                <div>
+                    <button onClick={() => prevpage()}>Prev</button>
+                    <button onClick={() => nextPage()}>Next</button>
+                </div>
+            </>
+        )
+    }
+
+    export default UsersPAge
 
 
-export const UserRow = ({ user }: Props) => {
-    const { id, avatar, first_name, email } = user;
-    return (
-        <>
-            <tr >
-                <td> <img style={{ width: '50px' }} src={avatar} alt="User Avatar" /> </td>
-                <td>{first_name}</td>
-                <td>{email}</td>
-            </tr>
-        </>
-    )
-}
+
+    interface Props {
+        user: User;
+    }
+
+
+    export const UserRow = ({ user }: Props) => {
+        const { id, avatar, first_name, email } = user;
+        return (
+            <>
+                <tr >
+                    <td> <img style={{ width: '50px' }} src={avatar} alt="User Avatar" /> </td>
+                    <td>{first_name}</td>
+                    <td>{email}</td>
+                </tr>
+            </>
+        )
+    }
